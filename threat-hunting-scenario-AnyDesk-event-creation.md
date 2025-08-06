@@ -1,18 +1,16 @@
-# Threat Event (Unauthorized TOR Usage)
-**Unauthorized TOR Browser Installation and Use**
+# Threat Event (Unauthorized AnyDesk Usage)
+**Unauthorized Remote Access Tool - AnyDesk Usage**
 
 ## Steps the "Bad Actor" took Create Logs and IoCs:
-1. Download the TOR browser installer: https://www.torproject.org/download/
-2. Install it silently: ```tor-browser-windows-x86_64-portable-14.0.1.exe /S```
-3. Opens the TOR browser from the folder on the desktop
-4. Connect to TOR and browse a few sites. For example:
-   - **WARNING: The links to onion sites change a lot and these have changed. However if you connect to Tor and browse around normal sites a bit, the necessary logs should still be created:**
-   - Current Dread Forum: ```dreadytofatroptsdj6io7l3xptbet6onoyno2yv7jicoxknyazubrad.onion```
-   - Dark Markets Forum: ```dreadytofatroptsdj6io7l3xptbet6onoyno2yv7jicoxknyazubrad.onion/d/DarkNetMarkets```
-   - Current Elysium Market: ```elysiumutkwscnmdohj23gkcyp3ebrf4iio3sngc5tvcgyfp4nqqmwad.top/login```
+1. Download the AnyDesk installer: https://download.anydesk.com/AnyDesk.exe
+2. Install it silently: ```.\AnyDesk.exe --install "C:\Program Files (x86)\AnyDesk" --start-with-win```
+3. Launched AnyDesk manually or via command line: `Start-Process "C:\Program Files (x86)\AnyDesk\AnyDesk.exe`
+4. Connected to a remote host using AnyDesk
 
-6. Create a folder on your desktop called ```tor-shopping-list.txt``` and put a few fake (illicit) items in there
-7. Delete the file.
+5. Created a file on Desktop named `anydesk-session-log.txt` containing a fake session ID to simulate evidence: `Session ID: 123-456-789  
+Connected to: attacker-machine  
+Duration: 15 minutes`
+
 
 ---
 
@@ -21,63 +19,50 @@
 |---------------------|------------------------------------------------------------------------------|
 | **Name**| DeviceFileEvents|
 | **Info**|https://learn.microsoft.com/en-us/defender-xdr/advanced-hunting-deviceinfo-table|
-| **Purpose**| Used for detecting TOR download and installation, as well as the shopping list creation and deletion. |
+| **Purpose**| Detect AnyDesk installer and session log files dropped on disk. |
 
 | **Parameter**       | **Description**                                                              |
 |---------------------|------------------------------------------------------------------------------|
 | **Name**| DeviceProcessEvents|
 | **Info**|https://learn.microsoft.com/en-us/defender-xdr/advanced-hunting-deviceinfo-table|
-| **Purpose**| Used to detect the silent installation of TOR as well as the TOR browser and service launching.|
+| **Purpose**| Detect AnyDesk installation or launch activity.|
 
 | **Parameter**       | **Description**                                                              |
 |---------------------|------------------------------------------------------------------------------|
 | **Name**| DeviceNetworkEvents|
 | **Info**|https://learn.microsoft.com/en-us/defender-xdr/advanced-hunting-devicenetworkevents-table|
-| **Purpose**| Used to detect TOR network activity, specifically tor.exe and firefox.exe making connections over ports to be used by TOR (9001, 9030, 9040, 9050, 9051, 9150).|
+| **Purpose**| Detect outbound connections initiated by AnyDesk.|
 
 ---
 
 ## Related Queries:
 ```kql
-// Installer name == tor-browser-windows-x86_64-portable-(version).exe
-// Detect the installer being downloaded
+// Detect AnyDesk installer file dropped
 DeviceFileEvents
-| where FileName startswith "tor"
+| where FileName has "AnyDesk.exe"
 
-// TOR Browser being silently installed
-// Take note of two spaces before the /S (I don't know why)
+// Detect installation or execution of AnyDesk
 DeviceProcessEvents
-| where ProcessCommandLine contains "tor-browser-windows-x86_64-portable-14.0.1.exe  /S"
-| project Timestamp, DeviceName, ActionType, FileName, ProcessCommandLine
+| where FileName == "AnyDesk.exe"
+| project Timestamp, DeviceName, AccountName, FolderPath, ProcessCommandLine
 
-// TOR Browser or service was successfully installed and is present on the disk
-DeviceFileEvents
-| where FileName has_any ("tor.exe", "firefox.exe")
-| project  Timestamp, DeviceName, RequestAccountName, ActionType, InitiatingProcessCommandLine
-
-// TOR Browser or service was launched
-DeviceProcessEvents
-| where ProcessCommandLine has_any("tor.exe","firefox.exe")
-| project  Timestamp, DeviceName, AccountName, ActionType, ProcessCommandLine
-
-// TOR Browser or service is being used and is actively creating network connections
+// Detect outbound connections from AnyDesk
 DeviceNetworkEvents
-| where InitiatingProcessFileName in~ ("tor.exe", "firefox.exe")
-| where RemotePort in (9001, 9030, 9040, 9050, 9051, 9150)
-| project Timestamp, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, RemoteIP, RemotePort, RemoteUrl
-| order by Timestamp desc
+| where InitiatingProcessFileName == "AnyDesk.exe"
+| project Timestamp, DeviceName, InitiatingProcessAccountName, RemoteIP, RemotePort, RemoteUrl
 
-// User shopping list was created and, changed, or deleted
+// Detect fake AnyDesk session log (simulation artifact)
 DeviceFileEvents
-| where FileName contains "shopping-list.txt"
+| where FileName == "anydesk-session-log.txt"
+
 ```
 
 ---
 
 ## Created By:
-- **Author Name**: Josh Madakor
-- **Author Contact**: https://www.linkedin.com/in/joshmadakor/
-- **Date**: August 31, 2024
+- **Author Name**: Musie Berhe
+- **Author Contact**:
+- **Date**: August 6, 2025
 
 ## Validated By:
 - **Reviewer Name**: 
@@ -94,4 +79,4 @@ DeviceFileEvents
 ## Revision History:
 | **Version** | **Changes**                   | **Date**         | **Modified By**   |
 |-------------|-------------------------------|------------------|-------------------|
-| 1.0         | Initial draft                  | `September  6, 2024`  | `Josh Madakor`   
+| 1.0         | Initial draft                  | `August  6, 2025`  | `Musie Berhe`   
